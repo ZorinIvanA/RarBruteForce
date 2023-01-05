@@ -18,6 +18,7 @@ namespace RarBrute.PasswordFinder.BL
         public string[] Passwords { get; set; }
 
         public event EventHandler<PasswordTryEventArgs> PasswordTry;
+        public event EventHandler PasswordsListPrepared;
 
         public PasswordFinder(string sourceFile,
             string targetPath,
@@ -47,6 +48,7 @@ namespace RarBrute.PasswordFinder.BL
         {
             var passwordsList = File.ReadAllLines(PasswordsPath);
             Passwords = ReplaceWildcards(passwordsList);
+            PasswordsListPrepared(this, EventArgs.Empty);
             var passwordsPerThread = Passwords.Length / ThreadsCount;
 
             var tasks = new List<Task>();
@@ -147,7 +149,7 @@ namespace RarBrute.PasswordFinder.BL
                 }
                 catch (Exception ex)
                 {
-                    OnPasswordTry(password, ex.Message, false);                    
+                    OnPasswordTry(password, ex.Message, false);
                 }
             }
 

@@ -18,6 +18,7 @@ var finder = new PasswordFinder(
 Console.WriteLine($"Searching password with {threadsCount} threads");
 
 finder.PasswordTry += OnPasswordTry;
+finder.PasswordsListPrepared += (o, e) => Console.WriteLine($"Prepared {finder.Passwords.Length} passwords");
 
 var foundPassword = $"Found password {await finder.FindPassword()}";
 
