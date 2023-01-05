@@ -1,124 +1,51 @@
-﻿using Aspose.Zip.Rar;
-using System.Text;
+﻿using RarBrute.PasswordFinder.BL;
+using System.Diagnostics;
 
-var threadsCount = int.Parse(args[0]);
-var tempDir = "D:\\temp";
-var alphabet = LoadAlphabet();
-var passwordsList = File.ReadAllLines("./passwords.txt");
+Stopwatch stopwatch = Stopwatch.StartNew();
 
-Console.WriteLine("Preparing passwords list");
-var passwords = ReplaceWildcards(passwordsList);
-Console.WriteLine($"Passwords prepared: {passwords.Length}");
-var passwordsPerThread = (int)passwords.Length / threadsCount;
+int threadsCount;
 
-var tasks = new List<Task>();
-for (var i = 0; i < threadsCount; ++i)
+if (!int.TryParse(args[0], out threadsCount))
+    threadsCount = 100;
+
+var finder = new PasswordFinder(
+    "D:\\temp\\input\\input.rar",
+    "D:\\temp\\output\\",
+    "alphabet.txt",
+    "passwords.txt",
+    threadsCount);
+
+Console.WriteLine($"Searching password with {threadsCount} threads");
+
+finder.PasswordTry += OnPasswordTry;
+
+var foundPassword = $"Found password {await finder.FindPassword()}";
+
+if (string.IsNullOrEmpty(foundPassword))
 {
-    var threadTempI = i;
-    tasks.Add(new Task(() => OneTaskRoutine(threadTempI * passwordsPerThread, passwordsPerThread)));
-    Console.WriteLine($"Adding task {i}");
+    Console.WriteLine("No passwords found");
+}
+else
+{
+    Console.WriteLine($"Found password {foundPassword}");
 }
 
-tasks.ForEach(x => x.Start());
+finder.PasswordTry -= OnPasswordTry;
 
-while (tasks.Count > 0)
+stopwatch.Stop();
+Console.WriteLine($"Spent {stopwatch.Elapsed}");
+
+void OnPasswordTry(object o, PasswordTryEventArgs e)
 {
-    var completed = await Task.WhenAny(tasks);
+    var successString = e.Success ? "SUCCESS" : "FAILURE";
 
-    if (completed.IsCompletedSuccessfully) // Successful?
-    {
-        tasks.Clear();
-        break;
-    }
-
-    tasks.Remove(completed);
-}
-
-Console.WriteLine("Finished");
-
-void OneTaskRoutine(int currentNumber, int pwdPerThread)
-{
-    var passwordsLocal = new string[pwdPerThread];
-    var elementsToCopyLenght = (passwords.Length - currentNumber >= pwdPerThread) ? pwdPerThread : passwords.Length - currentNumber;
-    Array.Copy(passwords, currentNumber, passwordsLocal, 0, elementsToCopyLenght);
-
-    bool succeeded = false;
-
-    foreach (var password in passwordsLocal)
-    {
-        var dirName = $"{tempDir}\\output\\{currentNumber}";
-        if (!Directory.Exists(dirName))
-            Directory.CreateDirectory(dirName);
-
-        var options = new RarArchiveLoadOptions()
-        {
-            DecryptionPassword = password
-        };
-        try
-        {
-            Console.WriteLine($"Try password {password}");
-            using (var archive = new RarArchive(tempDir + "\\input\\input.rar", options))
-            {
-                archive.ExtractToDirectory(dirName);
-            }
-            Console.WriteLine($"Password {password} succeeded");
-            succeeded = true;
-            break;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Password {password} failed");
-            Console.WriteLine(ex.Message);
-        }
-    }
-
-    if (!succeeded)
-        throw new Exception($"No passwords found from {currentNumber} to {currentNumber + pwdPerThread}");
+    if (e.Success)
+        Console.WriteLine($"Password try {e.UsedPassword} with result {successString}");
+    else
+        Console.WriteLine($"Password try {e.UsedPassword} with result {successString} and error {e.Error}");
 }
 
 
-string[] ReplaceWildcards(string[] source)
-{
-    var temp = new List<string>();
 
-    foreach (var st in source)
-    {
-        if (!st.Contains("*"))
-            temp.Add(st);
-        else
-        {
-            var position = st.IndexOf('*');
-            temp.AddRange(ReplaceWildcardFromPosition(st, position));
-        }
-    }
-
-    return temp.ToArray();
-}
-
-string[] ReplaceWildcardFromPosition(string source, int position)
-{
-    var temp = new List<string>();
-
-    foreach (var symbol in alphabet)
-    {
-        StringBuilder sb = new StringBuilder(source.Substring(0, position));
-        sb.Append(symbol);
-        sb.Append(source.Substring(position + 1));
-        var tempStr = sb.ToString();
-        var newwcPosition = tempStr.IndexOf('*');
-        temp.Add(tempStr.Replace("*", string.Empty));
-
-        if (newwcPosition >= 0)
-            temp.AddRange(ReplaceWildcardFromPosition(tempStr, newwcPosition));
-    }
-
-    return temp.ToArray();
-}
-
-string LoadAlphabet()
-{
-    var alphabets = File.ReadAllLines("alphabet.txt");
-    return alphabets.First();
-}
 
 
