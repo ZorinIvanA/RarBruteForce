@@ -11,3 +11,5 @@
 /ConsoleApp1/.vs/ProjectEvaluation
 /ConsoleApp1/RarBrute.PasswordFinder.BL/bin/Debug/net6.0
 /ConsoleApp1/RarBrute.PasswordFinder.BL/obj
+/ConsoleApp1/RarBrute.App/bin/Debug/net6.0-windows
+/ConsoleApp1/RarBrute.App/obj
